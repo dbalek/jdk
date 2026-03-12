@@ -181,6 +181,7 @@ class ConsoleIOContext extends IOContext {
 
         setupReader.accept(reader);
         reader.setOpt(Option.DISABLE_EVENT_EXPANSION);
+        reader.setVariable(LineReader.WORDCHARS, "_$");
 
         reader.setParser((line, cursor, context) -> {
             if (!ConsoleIOContext.this.allowIncompleteInputs && !repl.isComplete(line)) {

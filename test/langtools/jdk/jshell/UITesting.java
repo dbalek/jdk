@@ -53,6 +53,10 @@ public class UITesting {
     protected static final String UP = "\033[A";
     protected static final String DOWN = "\033[B";
     protected static final String CTRL_D = "\u0004";
+    protected static final String ESC_DEL = "\u001B\u007F"; // ESC + DEL (common Alt+Backspace)
+    protected static final String ESC_B = "\u001Bb"; // ESC + b (common Alt+b)
+    protected static final String ESC_F = "\u001Bf"; // ESC + f (common Alt+f)
+    protected static final String ESC_D = "\u001Bd"; // ESC + d (common Alt+d)
     private final boolean laxLineEndings;
 
     public UITesting() {
