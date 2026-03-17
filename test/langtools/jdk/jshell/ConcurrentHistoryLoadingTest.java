@@ -22,53 +22,59 @@
  */
 
 import java.io.ByteArrayInputStream;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.Future;
-import java.util.concurrent.ThreadLocalRandom;
+import java.util.Arrays;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.prefs.Preferences;
 
 import jdk.jshell.tool.JavaShellToolBuilder;
+import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 
 /*
  * @test
  * @bug 8347418
- * @summary Verify that launching JShell concurrently doesn't lead to a
- *          NullPointerException when JShell tries to load the history
+ * @summary Verify that loading of JShell history doesn't lead to a
+ *          NullPointerException when the Preferences are modified concurrently.
  * @run junit ConcurrentHistoryLoadingTest
  */
 public class ConcurrentHistoryLoadingTest {
 
+    private static final String HISTORY_LINE_PREFIX = "HISTORY_LINE_";
+
     @Test
-    public void testConcurrentHistoryLoadingAndStoring() throws Throwable {
-        final int numTasks = 30;
-        final List<Future<Void>> results = new ArrayList<>();
-        try (final ExecutorService executor = Executors.newCachedThreadPool()) {
-            Thread.sleep(ThreadLocalRandom.current().nextInt(100));
-            // run the concurrent tasks
-            for (int i = 0; i < numTasks; i++) {
-                final Future<Void> f = executor.submit(() -> {
-                    // prepare input with rundom number of lines
-                    StringBuilder input = new StringBuilder();
-                    int max = ThreadLocalRandom.current().nextInt(8) + 1;
-                    for (int j = 1; j < max; j++) {
-                        input.append("int x").append(j).append(" = 42\n");
+    public void testConcurrentHistoryLoading() throws Throwable {
+        AtomicBoolean removeOnAccess = new AtomicBoolean();
+        Preferences testPrefs = new ReplToolTesting.MemoryPreferences() {
+            @Override
+            protected String getSpi(String key) {
+                String result = super.getSpi(key);
+                if (key.startsWith(HISTORY_LINE_PREFIX) && removeOnAccess.getAndSet(false)) {
+                    for (String key2Remote : keysSpi()) {
+                        remove(key2Remote);
                     }
-                    // launch jshell using shared preferences
-                    JavaShellToolBuilder
-                            .builder()
-                            .in(new ByteArrayInputStream(input.toString().getBytes()), null)
-                            .start();
-                    return null;
-                });
-                results.add(f);
+                }
+                return result;
             }
-            // wait for the tasks to complete
-            for (final Future<Void> f : results) {
-                f.get();
-            }
+        };
+        StringBuilder input = new StringBuilder();
+        int max = 10;
+        for (int j = 0; j < max; j++) {
+            input.append("int x").append(j).append(" = 42\n");
         }
+        JavaShellToolBuilder
+                .builder()
+                .persistence(testPrefs)
+                .in(new ByteArrayInputStream(input.toString().getBytes()), null)
+                .start();
+        Assertions.assertEquals(10, Arrays.stream(testPrefs.keys())
+                .filter(key -> key.startsWith(HISTORY_LINE_PREFIX))
+                .count());
+        removeOnAccess.set(true);
+        JavaShellToolBuilder
+                .builder()
+                .persistence(testPrefs)
+                .in(new ByteArrayInputStream(input.toString().getBytes()), null)
+                .start();
+
     }
 }

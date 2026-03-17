@@ -914,7 +914,7 @@ public class ReplToolTesting {
         }
     }
 
-    public static final class MemoryPreferences extends AbstractPreferences {
+    public static class MemoryPreferences extends AbstractPreferences {
 
         private final Map<String, String> values = new HashMap<>();
         private final Map<String, MemoryPreferences> nodes = new HashMap<>();
@@ -943,17 +943,17 @@ public class ReplToolTesting {
         }
 
         @Override
-        protected void removeNodeSpi() throws BackingStoreException {
+        protected void removeNodeSpi() {
             ((MemoryPreferences) parent()).nodes.remove(name());
         }
 
         @Override
-        protected String[] keysSpi() throws BackingStoreException {
+        protected String[] keysSpi() {
             return values.keySet().toArray(new String[0]);
         }
 
         @Override
-        protected String[] childrenNamesSpi() throws BackingStoreException {
+        protected String[] childrenNamesSpi() {
             return nodes.keySet().toArray(new String[0]);
         }
 
@@ -963,11 +963,11 @@ public class ReplToolTesting {
         }
 
         @Override
-        protected void syncSpi() throws BackingStoreException {
+        protected void syncSpi() {
         }
 
         @Override
-        protected void flushSpi() throws BackingStoreException {
+        protected void flushSpi() {
         }
 
     }
