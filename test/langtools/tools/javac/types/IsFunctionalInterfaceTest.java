@@ -111,7 +111,22 @@ public class IsFunctionalInterfaceTest {
                 .run()
                 .writeAll();
 
-        List<String> out = new JavacTask(tb)
+        List<String> out1 = new JavacTask(tb)
+                .options("-d", classes.toString(), "-cp", classes.toString(), "-XDrawDiagnostics", "-nowarn")
+                .sources("""
+                         public class Test {
+                            public void main() { t(() -> null); }
+                            private void t(I i) {}
+                         }
+                         """)
+                .run(Task.Expect.FAIL)
+                .writeAll()
+                .getOutputLines(Task.OutputKind.DIRECT);
+        tb.checkEqual(out1, List.of(
+                "Test.java:2:25: compiler.err.cant.apply.symbol: kindname.method, t, I, @27, kindname.class, Test, (compiler.misc.no.conforming.assignment.exists: (compiler.misc.not.a.functional.intf.1: I, (compiler.misc.no.abstracts: kindname.interface, I)))",
+                "1 error"));
+
+        List<String> out2 = new JavacTask(tb)
                 .options("-d", classes.toString(), "-cp", classes.toString(), "-XDrawDiagnostics", "-nowarn")
                 .sources("""
                          public class Impl implements I {
@@ -120,7 +135,7 @@ public class IsFunctionalInterfaceTest {
                 .run(Task.Expect.FAIL)
                 .writeAll()
                 .getOutputLines(Task.OutputKind.DIRECT);
-        tb.checkEqual(out, List.of(
+        tb.checkEqual(out2, List.of(
                 "Impl.java:1:8: compiler.err.does.not.override.abstract: Impl, test(), I",
                 "1 error"));
 
