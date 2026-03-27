@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 1999, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 1999, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -151,7 +151,7 @@ public class Log extends AbstractLog {
                         return;
 
                     // Wait for the Lint instance at "pos" to be calculated, then proceed
-                    if ((lint = lintFor(diag)) == null) {
+                    if (blockWarnings || (lint = lintFor(diag)) == null) {
                         addLintWaiter(currentSourceFile(), diag);           // ...but we don't know it yet, so defer
                         return;
                     }
@@ -202,32 +202,34 @@ public class Log extends AbstractLog {
          * Flush any lint waiters whose {@link Lint} configurations are now known.
          */
         public void flushLintWaiters() {
-            lintWaitersMap.entrySet().removeIf(entry -> {
+            if (!blockWarnings) {
+                lintWaitersMap.entrySet().removeIf(entry -> {
 
-                // Is the source file no longer recognized? If so, discard warnings (e.g., this can happen with JShell)
-                JavaFileObject sourceFile = entry.getKey();
-                if (!lintMapper.isKnown(sourceFile))
-                    return true;
+                    // Is the source file no longer recognized? If so, discard warnings (e.g., this can happen with JShell)
+                    JavaFileObject sourceFile = entry.getKey();
+                    if (!lintMapper.isKnown(sourceFile))
+                        return true;
 
-                // Flush those diagnostics for which we now know the applicable Lint
-                List<JCDiagnostic> diagnosticList = entry.getValue();
-                JavaFileObject prevSourceFile = useSource(sourceFile);
-                try {
-                    diagnosticList.removeIf(diag -> {
-                        Lint lint = lintFor(diag);
-                        if (lint != null) {
-                            reportWithLint(diag, lint);
-                            return true;
-                        }
-                        return false;
-                    });
-                } finally {
-                    useSource(prevSourceFile);
-                }
+                    // Flush those diagnostics for which we now know the applicable Lint
+                    List<JCDiagnostic> diagnosticList = entry.getValue();
+                    JavaFileObject prevSourceFile = useSource(sourceFile);
+                    try {
+                        diagnosticList.removeIf(diag -> {
+                            Lint lint = lintFor(diag);
+                            if (lint != null) {
+                                reportWithLint(diag, lint);
+                                return true;
+                            }
+                            return false;
+                        });
+                    } finally {
+                        useSource(prevSourceFile);
+                    }
 
-                // Discard list if empty
-                return diagnosticList.isEmpty();
-            });
+                    // Discard list if empty
+                    return diagnosticList.isEmpty();
+                });
+            }
         }
     }
 
@@ -398,6 +400,8 @@ public class Log extends AbstractLog {
      * Handler for initial dispatch of diagnostics.
      */
     private DiagnosticHandler diagnosticHandler;
+
+    private boolean blockWarnings = true;
 
     /** Get the Log instance for this context. */
     public static Log instance(Context context) {
@@ -838,6 +842,16 @@ public class Log extends AbstractLog {
      */
     public void reportOutstandingWarnings() {
         diagnosticHandler.flushLintWaiters();
+    }
+
+    public void dropOutstandingWarnings(List<JCCompilationUnit> roots) {
+        for (JCCompilationUnit root : roots) {
+            diagnosticHandler.lintWaitersMap.remove(root.sourcefile);
+        }
+    }
+
+    public void unblockWarnings() {
+        blockWarnings = false;
     }
 
     // Get the Lint config for the given warning (if known)
