@@ -23,7 +23,7 @@
 
 /*
  * @test
- * @bug 8171177 8187591
+ * @bug 8171177 8187591 8378950
  * @summary Verify that ModuleResolution attribute flags are honored.
  * @library /tools/lib
  * @modules jdk.compiler/com.sun.tools.javac.api

@@ -1197,7 +1197,7 @@ public class JavacProcessingEnvironment implements ProcessingEnvironment, Closea
         void showDiagnostics(boolean showAll) {
             deferredDiagnosticHandler.reportDeferredDiagnostics(
                     ACCEPT_NON_RECOVERABLE_LINTS.and(showAll ? ACCEPT_ALL
-                                                          : ACCEPT_NON_RECOVERABLE));
+                                                             : ACCEPT_NON_RECOVERABLE));
             log.popDiagnosticHandler(deferredDiagnosticHandler);
             compiler.setDeferredDiagnosticHandler(null);
         }
