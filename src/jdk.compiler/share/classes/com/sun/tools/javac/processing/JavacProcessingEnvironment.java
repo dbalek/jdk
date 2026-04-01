@@ -1104,7 +1104,7 @@ public class JavacProcessingEnvironment implements ProcessingEnvironment, Closea
                 return true;
 
             return deferredDiagnosticHandler.getDiagnostics().stream()
-              .anyMatch(d -> (d.getKind() == Diagnostic.Kind.WARNING && werror) ||
+              .anyMatch(d -> (d.getKind() == Diagnostic.Kind.WARNING && werror && ACCEPT_NON_RECOVERABLE_LINTS.test(d)) ||
                              (d.getKind() == Diagnostic.Kind.ERROR && (fatalErrors || !d.isFlagSet(RECOVERABLE))));
         }
 
@@ -1195,12 +1195,19 @@ public class JavacProcessingEnvironment implements ProcessingEnvironment, Closea
         }
 
         void showDiagnostics(boolean showAll) {
-            deferredDiagnosticHandler.reportDeferredDiagnostics(showAll ? ACCEPT_ALL
-                                                                        : ACCEPT_NON_RECOVERABLE);
+            deferredDiagnosticHandler.reportDeferredDiagnostics(
+                    ACCEPT_NON_RECOVERABLE_LINTS.and(showAll ? ACCEPT_ALL
+                                                          : ACCEPT_NON_RECOVERABLE));
             log.popDiagnosticHandler(deferredDiagnosticHandler);
             compiler.setDeferredDiagnosticHandler(null);
         }
         //where:
+            private final Predicate<JCDiagnostic> ACCEPT_NON_RECOVERABLE_LINTS =
+                    d -> !Optional.of(d)
+                            .map(JCDiagnostic::getLintCategory)
+                            .map(lc -> lc.annotationSuppression ||
+                                       lc == Lint.LintCategory.INCUBATING)
+                            .orElse(false);
             private final Predicate<JCDiagnostic> ACCEPT_NON_RECOVERABLE =
                     d -> d.getKind() != JCDiagnostic.Kind.ERROR ||
                          !d.isFlagSet(DiagnosticFlag.RECOVERABLE) ||
@@ -1354,7 +1361,6 @@ public class JavacProcessingEnvironment implements ProcessingEnvironment, Closea
 
         if (compiler.continueAfterProcessAnnotations()) {
             round.finalCompiler();
-            log.dropOutstandingWarnings(roots);
             compiler.enterTrees(compiler.initModules(roots));
         } else {
             compiler.todo.clear();

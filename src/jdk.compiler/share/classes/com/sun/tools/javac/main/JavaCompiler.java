@@ -1208,7 +1208,6 @@ public class JavaCompiler {
                 log.error(Errors.ProcNoExplicitAnnotationProcessingRequested(classnames));
             }
             Assert.checkNull(deferredDiagnosticHandler);
-            log.unblockWarnings();
             return ; // continue regular compilation
         }
 
@@ -1271,7 +1270,6 @@ public class JavaCompiler {
             } finally {
                 procEnvImpl.close();
             }
-            log.unblockWarnings();
         } catch (CompletionFailure ex) {
             log.error(Errors.CantAccess(ex.sym, ex.getDetailValue()));
             reportDeferredDiagnosticAndClearHandler();
@@ -1902,7 +1900,6 @@ public class JavaCompiler {
     }
 
     public void reportDeferredDiagnosticAndClearHandler() {
-        log.unblockWarnings();
         if (deferredDiagnosticHandler != null) {
             ToIntFunction<JCDiagnostic> diagValue =
                     d -> d.isFlagSet(RECOVERABLE) ? 1 : 0;
